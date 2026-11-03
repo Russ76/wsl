@@ -218,7 +218,6 @@ on amd64 and arm64.
 
 | | |
 |---|---|
-
 | Copyright | © 2025 Robotnik Automation S.L. |
 | Licence | BSD-3-Clause, kept with the files: [`meshes/rbsummit_steel/LICENSE`](src/wsl_description/meshes/rbsummit_steel/LICENSE) |
 
@@ -227,7 +226,6 @@ on amd64 and arm64.
 | Document | Contents |
 |---|---|
 | [Architecture](docs/architecture.md) | Nodes, data flow, performance profiling |
-
 | [Benchmarking](docs/benchmarking.md) | Metrics and methodology |
 
 ---
