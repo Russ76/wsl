@@ -51,7 +51,7 @@
       slip and with the configured calibration error. It is genuine wheel
       odometry, not a copy of the model pose. Yaw depends on the sum of
       separation and wheelbase, so the separation scale applies to both: a 3%
-      error then means 3% on the turn rate, as it does on a differential drive.
+      error then means 3% on the turn rate.
     -->
     <plugin filename="gz-sim-mecanum-drive-system" name="gz::sim::systems::MecanumDrive">
       <front_left_joint>front_left_wheel_joint</front_left_joint>

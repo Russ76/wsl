@@ -3,9 +3,10 @@
 <package format="3">
   <name>wsl_description</name>
   <version>0.1.0</version>
-  <description>URDF/Xacro model of the WSL warehouse AMR: geometry, inertia, sensor frames and Gazebo sensor definitions.</description>
+  <description>URDF/Xacro model of the WSL warehouse AMR, a Robotnik RB-Summit-XL Steel: geometry, inertia, sensor frames and Gazebo drive and sensor definitions.</description>
   <maintainer email="azerbenali5017@gmail.com">Azer Ben Ali</maintainer>
   <license>Apache-2.0</license>
+  <license file="meshes/rbsummit_steel/LICENSE">BSD-3-Clause</license>
   <author>Azer Ben Ali</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
