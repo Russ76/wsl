@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <!--
-  WSL warehouse AMR: differential drive base, 3D LiDAR on a mast, forward RGB
-  camera and an IMU.
+  WSL warehouse AMR: Robotnik RB-Summit-XL Steel with four mecanum wheels, a 3D
+  LiDAR on a mast, a forward RGB camera and an IMU. Visual meshes and their
+  BSD-3-Clause licence are in meshes/rbsummit_steel/.
 
-  base_footprint lies on the ground plane directly below the drive axle centre,
+  base_footprint lies on the ground plane directly below the chassis centre,
   base_link is at axle height, so the robot rotates about the base_link z axis.
   All geometry follows REP-103 (x forward, y left, z up).
 
@@ -18,7 +19,7 @@
   <xacro:arg name="camera_rate_hz" default="20"/>
   <xacro:arg name="imu_rate_hz" default="100"/>
   <!--
-    Ratio between the wheel geometry DiffDrive assumes and the true geometry.
+    Ratio between the wheel geometry the drive assumes and the true geometry.
     1.0 is a perfectly calibrated robot. Values != 1 reproduce the systematic
     odometry errors (Borenstein's E_d / E_b) seen on real robots.
   -->
@@ -28,44 +29,56 @@
 
   <xacro:include filename="$(find wsl_description)/urdf/inertial.xacro"/>
 
-  <xacro:property name="wheel_radius" value="0.08"/>
-  <xacro:property name="wheel_width" value="0.04"/>
-  <xacro:property name="wheel_separation" value="0.44"/>
-  <xacro:property name="wheel_mass" value="1.2"/>
+  <xacro:property name="mesh_dir" value="package://wsl_description/meshes/rbsummit_steel"/>
 
-  <xacro:property name="chassis_length" value="0.60"/>
-  <xacro:property name="chassis_width" value="0.38"/>
-  <xacro:property name="chassis_height" value="0.18"/>
-  <xacro:property name="chassis_mass" value="28.0"/>
-  <xacro:property name="chassis_clearance" value="0.05"/>
-  <!-- Chassis centre relative to base_link (which sits at axle height). -->
-  <xacro:property name="chassis_z" value="${chassis_clearance + chassis_height/2 - wheel_radius}"/>
-  <xacro:property name="chassis_top_z" value="${chassis_z + chassis_height/2}"/>
+  <!-- Radius and width are the wheel mesh bounding box. -->
+  <xacro:property name="wheel_radius" value="0.127"/>
+  <xacro:property name="wheel_width" value="0.099"/>
+  <xacro:property name="wheel_base" value="0.445"/>
+  <xacro:property name="wheel_separation" value="0.409"/>
+  <xacro:property name="wheel_mass" value="6.5"/>
 
-  <xacro:property name="caster_radius" value="0.035"/>
-  <xacro:property name="caster_x" value="0.24"/>
+  <!-- Chassis mesh bounding box, relative to base_link (which sits at axle height). -->
+  <xacro:property name="chassis_length" value="0.719"/>
+  <xacro:property name="chassis_width" value="0.57862"/>
+  <xacro:property name="chassis_bottom_z" value="-0.06098"/>
+  <xacro:property name="chassis_top_z" value="0.38212"/>
+  <xacro:property name="chassis_height" value="${chassis_top_z - chassis_bottom_z}"/>
+  <xacro:property name="chassis_z" value="${(chassis_top_z + chassis_bottom_z) / 2}"/>
+  <!-- 125 kg in total before sensors. Mast mass is folded into the chassis box. -->
+  <xacro:property name="chassis_mass" value="${125.0 - 4 * wheel_mass}"/>
+
   <!--
-    Casters are 1 mm short of the ground so the driven wheels always carry the
-    load; with four rigid contacts the wheels could otherwise lose traction.
-    The resulting pitch is atan(0.001 / 0.24) = 0.24 deg.
+    The cover mesh is 1.5 mm thick and upstream sits flush in a recess of the
+    chassis. It rests on the recess rim here instead, 3 mm above the recess
+    floor, which is more than the depth buffer resolves at overview distances.
   -->
-  <xacro:property name="caster_collision_radius" value="${caster_radius - 0.001}"/>
+  <xacro:property name="top_cover_z" value="${chassis_top_z}"/>
+  <xacro:property name="top_cover_top_z" value="${top_cover_z + 0.0015}"/>
 
-  <xacro:property name="lidar_x" value="0.15"/>
-  <xacro:property name="lidar_height_above_ground" value="0.50"/>
+  <!--
+    The lowest ring (-15 deg) must pass over the far chassis corner, r = 0.462 m
+    from the body centre, which takes 0.124 m above the chassis top. The sensor
+    is on the centre so that this margin is the same in every direction.
+  -->
+  <xacro:property name="lidar_x" value="0.0"/>
+  <xacro:property name="lidar_height_above_ground" value="0.66"/>
   <xacro:property name="lidar_z" value="${lidar_height_above_ground - wheel_radius}"/>
   <xacro:property name="lidar_radius" value="0.05"/>
   <xacro:property name="lidar_length" value="0.07"/>
   <xacro:property name="lidar_mass" value="0.8"/>
   <xacro:property name="mast_radius" value="0.025"/>
-  <xacro:property name="mast_length" value="${lidar_z - lidar_length/2 - chassis_top_z}"/>
+  <xacro:property name="mast_length" value="${lidar_z - lidar_length/2 - top_cover_top_z}"/>
 
-  <xacro:property name="camera_x" value="${chassis_length/2 + 0.015}"/>
-  <xacro:property name="camera_z" value="0.11"/>
+  <!-- On the front face of the upper shell, 1 mm clear of the mesh. -->
+  <xacro:property name="camera_x" value="${chassis_length/2 + 0.016}"/>
+  <xacro:property name="camera_z" value="0.29"/>
 
-  <material name="chassis_orange"><color rgba="0.93 0.45 0.10 1.0"/></material>
-  <material name="dark_grey"><color rgba="0.15 0.15 0.15 1.0"/></material>
-  <material name="sensor_black"><color rgba="0.05 0.05 0.05 1.0"/></material>
+  <!-- Colours from the Robotnik datasheet photo. Wheels use the mesh's own materials. -->
+  <material name="chassis_black"><color rgba="0.14 0.14 0.15 1.0"/></material>
+  <material name="cover_anthracite"><color rgba="0.28 0.28 0.30 1.0"/></material>
+  <material name="dark_grey"><color rgba="0.35 0.35 0.35 1.0"/></material>
+  <material name="sensor_black"><color rgba="0.10 0.10 0.10 1.0"/></material>
 
   <link name="base_footprint"/>
 
@@ -77,75 +90,71 @@
 
   <link name="base_link">
     <visual name="chassis">
-      <origin xyz="0 0 ${chassis_z}"/>
-      <geometry><box size="${chassis_length} ${chassis_width} ${chassis_height}"/></geometry>
-      <material name="chassis_orange"/>
+      <geometry><mesh filename="${mesh_dir}/rbsummit_steel_chassis.stl"/></geometry>
+      <material name="chassis_black"/>
     </visual>
     <collision name="chassis">
       <origin xyz="0 0 ${chassis_z}"/>
       <geometry><box size="${chassis_length} ${chassis_width} ${chassis_height}"/></geometry>
     </collision>
 
+    <visual name="top_cover">
+      <origin xyz="0 0 ${top_cover_z}"/>
+      <geometry><mesh filename="${mesh_dir}/rbsummit_steel_top_cover.stl"/></geometry>
+      <material name="cover_anthracite"/>
+    </visual>
+
     <visual name="mast">
-      <origin xyz="${lidar_x} 0 ${chassis_top_z + mast_length/2}"/>
+      <origin xyz="${lidar_x} 0 ${top_cover_top_z + mast_length/2}"/>
       <geometry><cylinder radius="${mast_radius}" length="${mast_length}"/></geometry>
       <material name="dark_grey"/>
     </visual>
     <collision name="mast">
-      <origin xyz="${lidar_x} 0 ${chassis_top_z + mast_length/2}"/>
+      <origin xyz="${lidar_x} 0 ${top_cover_top_z + mast_length/2}"/>
       <geometry><cylinder radius="${mast_radius}" length="${mast_length}"/></geometry>
     </collision>
 
-    <xacro:macro name="caster" params="name x">
-      <visual name="${name}_caster">
-        <origin xyz="${x} 0 ${caster_radius - wheel_radius}"/>
-        <geometry><sphere radius="${caster_radius}"/></geometry>
-        <material name="dark_grey"/>
-      </visual>
-      <collision name="${name}_caster">
-        <origin xyz="${x} 0 ${caster_radius - wheel_radius}"/>
-        <geometry><sphere radius="${caster_collision_radius}"/></geometry>
-      </collision>
-    </xacro:macro>
-    <xacro:caster name="front" x="${caster_x}"/>
-    <xacro:caster name="rear" x="${-caster_x}"/>
-
-    <!-- Mast and caster mass is folded into the chassis box. -->
     <xacro:box_inertial mass="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}">
       <origin xyz="0 0 ${chassis_z}"/>
     </xacro:box_inertial>
   </link>
 
   <!--
-    Both wheel axes point along +y: positive joint velocity rolls the wheel
-    towards +x. DiffDrive accounts for the mirrored mounting itself.
+    All wheel axes point along +y: positive joint velocity rolls the wheel
+    towards +x. Rollers on the ground run along (1, -1) on mesh 1 and (1, 1) on
+    mesh 2, which is the direction that carries traction: see fdir1 in the
+    Gazebo file.
   -->
-  <xacro:macro name="drive_wheel" params="side y">
-    <joint name="${side}_wheel_joint" type="continuous">
+  <xacro:macro name="mecanum_wheel" params="name x y mesh">
+    <joint name="${name}_wheel_joint" type="continuous">
       <parent link="base_link"/>
-      <child link="${side}_wheel_link"/>
-      <origin xyz="0 ${y} 0"/>
+      <child link="${name}_wheel_link"/>
+      <origin xyz="${x} ${y} 0"/>
       <axis xyz="0 1 0"/>
-      <limit effort="20" velocity="20"/>
+      <limit effort="50" velocity="25"/>
       <dynamics damping="0.01" friction="0.0"/>
     </joint>
-    <link name="${side}_wheel_link">
+    <link name="${name}_wheel_link">
       <visual>
-        <origin rpy="${pi/2} 0 0"/>
-        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
-        <material name="dark_grey"/>
+        <geometry><mesh filename="${mesh_dir}/kairos_mecanum_wheel_${mesh}.dae"/></geometry>
       </visual>
+      <!--
+        A sphere touches the floor directly below the axle. A cylinder's contact
+        points sit off the axle, which made the robot turn at 1.13 rad/s when
+        commanded 1.00 and put the odometry 44 deg off per revolution.
+      -->
       <collision>
-        <origin rpy="${pi/2} 0 0"/>
-        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+        <geometry><sphere radius="${wheel_radius}"/></geometry>
       </collision>
       <xacro:cylinder_inertial mass="${wheel_mass}" radius="${wheel_radius}" length="${wheel_width}">
         <origin rpy="${pi/2} 0 0"/>
       </xacro:cylinder_inertial>
     </link>
   </xacro:macro>
-  <xacro:drive_wheel side="left" y="${wheel_separation/2}"/>
-  <xacro:drive_wheel side="right" y="${-wheel_separation/2}"/>
+  <xacro:mecanum_wheel name="front_left" x="${wheel_base/2}" y="${wheel_separation/2}" mesh="1"/>
+  <xacro:mecanum_wheel name="front_right" x="${wheel_base/2}" y="${-wheel_separation/2}" mesh="2"/>
+  <xacro:mecanum_wheel name="back_left" x="${-wheel_base/2}" y="${wheel_separation/2}" mesh="2"/>
+  <xacro:mecanum_wheel name="back_right" x="${-wheel_base/2}" y="${-wheel_separation/2}" mesh="1"/>
 
   <joint name="lidar_joint" type="fixed">
     <parent link="base_link"/>

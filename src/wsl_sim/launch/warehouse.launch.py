@@ -73,10 +73,12 @@ def generate_launch_description():
         package='robot_state_publisher', executable='robot_state_publisher', output='screen',
         parameters=[{'robot_description': robot_description}, sim_time])
 
+    # z = 0: base_footprint is on the floor and the wheels are tangent to it, so the
+    # 126 kg robot does not drop. From 2 cm it lands at 0.4 m/s with 0.7 mm penetration.
     spawn = Node(
         package='ros_gz_sim', executable='create', output='screen',
         arguments=['-world', arg('world'), '-name', 'wsl_amr', '-topic', 'robot_description',
-                   '-x', arg('x'), '-y', arg('y'), '-z', '0.02', '-Y', arg('yaw')])
+                   '-x', arg('x'), '-y', arg('y'), '-z', '0.0', '-Y', arg('yaw')])
 
     bridge = Node(
         package='ros_gz_bridge', executable='parameter_bridge', name='gz_bridge', output='screen',
@@ -108,4 +110,7 @@ def generate_launch_description():
         [DeclareLaunchArgument(name, default_value=default, description=description)
          for name, default, description in ARGUMENTS] +
         [AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', os.path.join(sim_share, 'models')),
+         # Parent of the package share, so package://wsl_description/... resolves in Gazebo.
+         AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', os.path.dirname(
+             get_package_share_directory('wsl_description'))),
          gazebo, robot_state_publisher, spawn, bridge, ground_truth_bridge, perception, slam, rviz])
