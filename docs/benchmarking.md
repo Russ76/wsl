@@ -21,7 +21,7 @@ without simulating again.
 experiment: spawn pose, robot/sensor arguments and the route. A scenario file
 is validated on load: the name must match the file, robot arguments must be
 known, the route must start at the spawn pose, and the speed must be within
-the DiffDrive limits.
+the MecanumDrive limits.
 
 | Scenario | Route | Purpose |
 |---|---|---|
@@ -92,7 +92,7 @@ For the header stamps `t_0..t_{n-1}` of one stream, in arrival order, with
   transport to the recorder. It excludes bridge time, which happens before
   both arrivals. Outputs the recorder handles before their input (callback
   ordering in its executor) have no latency; they are reported as
-  `unmatched_outputs` (0 to 12 of ~2000 per run). The algorithm cost without
+  `unmatched_outputs` (0 of ~2000 per run in the results below). The algorithm cost without
   transport or CPU contention is measured separately by `pipeline_benchmark`.
 
 ### Trajectory accuracy
@@ -153,24 +153,51 @@ final drift `2L sin(θ/2)`, and a 2% scale error gives RPE 0.02 m per metre.
   recorder): CPU % of one core (psutil, 1 Hz), max RSS, and RSS growth over
   the run after a 20 s warm-up
 
+## Results
+
+One run per scenario, all routes completed, on the host described under
+limitations.
+
+| | `warehouse_loop` | `aisle_loop` | `warehouse_loop_lowres` |
+|---|---|---|---|
+| Path driven | 114.8 m | 61.3 m | 114.8 m |
+| Duration (sim) | 199.6 s | 131.5 s | 199.7 s |
+| Real-time factor | 0.929 | 0.923 | 0.931 |
+| Odometry ATE RMSE | 1.252 m | 0.632 m | 1.253 m |
+| Odometry final drift | 4.176 m (3.64%), 13.97° | 1.869 m (3.05%), 13.97° | 4.176 m (3.64%), 13.97° |
+| SLAM online ATE RMSE | 0.420 m | 0.256 m | 1.021 m |
+| SLAM optimized ATE RMSE | 0.320 m | 0.222 m | 1.028 m |
+| SLAM optimized RPE per metre | 0.030 m, 0.056° | 0.029 m, 0.076° | 0.080 m, 0.132° |
+| Proximity detections (first at) | 6 (191.4 s) | 7 (122.4 s) | 5 (192.4 s) |
+| SLAM processing, mean / p95 | 125 / 337 ms | 168 / 462 ms | 64 / 146 ms |
+| Perception in-node, mean / max | 11.2 / 22.3 ms | 11.6 / 32.8 ms | 3.2 / 10.2 ms |
+| Perception end-to-end, mean / p95 | 11.6 / 16.0 ms | 12.0 / 16.9 ms | 3.3 / 4.2 ms |
+| Perception reduction | 54.9% | 50.7% | 34.9% |
+| Sensor stalls / regressions | 0 / 0 | 1 / 0 | 0 / 0 |
+
+The odometry heading error is the calibration model: 360° × (1 − 0.99 / 1.03) =
+13.98° over a closed loop, against 13.97° measured.
+
 ## Limitations
 
 - **Simulated sensors.** Gazebo noise models are Gaussian and stationary.
   There is no motion distortion of LiDAR sweeps, no multipath, and no rolling
   shutter. Results transfer to hardware only qualitatively.
 - **Odometry error is systematic by design.** The calibration-error model makes
-  drift repeatable. Real wheel odometry also has random slip, which only
-  arises here from contact dynamics.
+  drift repeatable. With calibration scales of 1.0 the simulated wheels do not
+  slip at 1 m/s²: odometry error was 0.001 m and 0.00° over the drive test.
+  Real rollers slip and have play, which this friction model does not include.
 - **Single run per scenario.** Gazebo, rendering and DDS timing are not
   bit-deterministic, so repeated runs differ slightly. Report several runs
   before drawing fine-grained conclusions.
 - **Ground-truth-driven route.** The path is reproducible, but it does not
   include navigation errors a real autonomy stack would add.
 - **Wall-clock metrics depend on the host.** Latency, CPU and RTF were
-  measured on a 4-core x86_64 VM with **software rendering** (Mesa llvmpipe).
+  measured in an 8-CPU arm64 container on an Apple M1 Pro with **software
+  rendering** (Mesa llvmpipe).
   A GPU changes Gazebo's share dramatically.
 - **Recorder memory grows with run length.** It keeps all rows in memory until
-  the end (about 100 MB RSS, +13 MB over a 5-minute run). This is expected,
+  the end (about 98 MB RSS, +11 MB over a 3.6-minute run). This is expected,
   not a leak, and appears in `resources`.
 - **Observer cost.** The recorder is a Python process subscribing to every
   sensor; its CPU is reported so it can be subtracted, but it competes for the

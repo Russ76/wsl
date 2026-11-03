@@ -39,7 +39,7 @@ recovers, what LiDAR resolution costs, and where the CPU goes.
 
 | Component | Description |
 |---|---|
-| **Robot** | Differential-drive AMR with 3D LiDAR, RGB camera and IMU |
+| **Robot** | Robotnik RB-Summit-XL Steel with mecanum wheels, 3D LiDAR, RGB camera and IMU |
 | **World** | 40 × 30 m warehouse with repetitive racks, pillars and dead ends |
 | **Perception** | C++ / PCL point-cloud pipeline: filtering, ground removal, obstacle clusters |
 | **SLAM** | RTAB-Map 3D LiDAR graph SLAM with ICP and loop closure |
@@ -50,12 +50,12 @@ recovers, what LiDAR resolution costs, and where the CPU goes.
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/media/gazebo-follow.gif" alt="Gazebo follow camera" width="100%"/><br/>
-      <b>Gazebo</b><br/><sub>The AMR driving between racks and pillars</sub>
+      <img src="docs/media/gazebo-follow.gif" alt="Gazebo follow camera on the Summit Steel between racks" width="100%"/><br/>
+      <b>Gazebo</b><br/><sub>The Summit Steel driving between racks</sub>
     </td>
     <td width="50%" align="center">
-      <img src="docs/media/rviz-slam.gif" alt="RViz showing SLAM map and LiDAR rings" width="100%"/><br/>
-      <b>RViz + RTAB-Map</b><br/><sub>LiDAR scans, 3D map cloud and occupancy grid</sub>
+      <img src="docs/media/rviz-slam.gif" alt="RViz with robot model, LiDAR rings, SLAM map and clusters" width="100%"/><br/>
+      <b>RViz + RTAB-Map</b><br/><sub>Robot model, LiDAR, SLAM map and obstacle clusters</sub>
     </td>
   </tr>
   <tr>
@@ -64,8 +64,28 @@ recovers, what LiDAR resolution costs, and where the CPU goes.
       <b>Onboard camera</b><br/><sub><code>/camera/image_raw</code> at 640 × 480, 20 Hz</sub>
     </td>
     <td width="50%" align="center">
-      <img src="docs/media/desktop.gif" alt="Full Gazebo and RViz desktop" width="100%"/><br/>
-      <b>Full desktop</b><br/><sub>Gazebo entity tree and RViz displays after launch</sub>
+      <img src="docs/media/rviz-model.gif" alt="RViz close-up of the robot model with TF axes and turning wheels" width="100%"/><br/>
+      <b>Robot model</b><br/><sub>TF axes, wheels turning from <code>/joint_states</code></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/media/robot-closeup.png" alt="Summit Steel close-up in Gazebo" width="100%"/><br/>
+      <b>Close-up</b><br/><sub>Robotnik meshes in Gazebo</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/media/robot-aisle.png" alt="Summit Steel in a warehouse aisle" width="100%"/><br/>
+      <b>In an aisle</b><br/><sub>Between rack rows in aisle A2</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/media/warehouse-overview.png" alt="Top-down view of the warehouse" width="100%"/><br/>
+      <b>Warehouse</b><br/><sub>40 × 30 m, top down</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/media/tf-tree.png" alt="TF tree from tf2_tools view_frames" width="100%"/><br/>
+      <b>TF tree</b><br/><sub><code>tf2_tools view_frames</code>, with SLAM running</sub>
     </td>
   </tr>
 </table>
@@ -136,14 +156,16 @@ The same dev container works on Windows.
 
 | System (`warehouse_loop`) | Measured |
 |---|---|
-| LiDAR / camera / IMU / odom rate (sim time) | 10.000 / 20.000 / 100.002 / 50.000 Hz, 0 stalls, 0 timestamp regressions |
-| Perception processing inside the node | 16.4 ms mean, 43 ms max (period 100 ms), 0 rejected clouds |
-| Perception end-to-end latency | 17.0 ms mean, 30.1 ms p95 |
-| Perception point reduction (14 400 raw → ~6 175 filtered) | 57.1 % |
-| Perception algorithm cost in isolation (`pipeline_benchmark`) | 5.6 ms mean, 7.3 ms p95 |
-| Proximity loop closures | 5, first one when the loop closes (t = 192.4 s) |
-| Real-time factor, full stack | 0.63 |
-| CPU (% of one core): Gazebo / SLAM / perception / bridge / recorder | 169 / 35 / 13 / 9 / 39 |
+| LiDAR / camera / IMU / odom rate (sim time) | 10.000 / 20.000 / 100.001 / 50.000 Hz, 0 stalls, 0 timestamp regressions |
+| Perception processing inside the node | 11.2 ms mean, 22.3 ms max (period 100 ms), 0 rejected clouds |
+| Perception end-to-end latency | 11.6 ms mean, 16.0 ms p95 |
+| Perception point reduction (14 400 raw → ~6 490 filtered) | 54.9 % |
+| Perception algorithm cost in isolation (`pipeline_benchmark`) | 7.1 ms mean, 7.3 ms p95 |
+| Proximity loop closures | 6, first one when the loop closes (t = 191.4 s) |
+| Real-time factor, full stack | 0.93 |
+| CPU (% of one core): Gazebo / SLAM / perception / bridge / recorder | 268 / 23 / 15 / 11 / 43 |
+
+Measured in an 8-CPU arm64 container on an Apple M1 Pro with Mesa llvmpipe.
 
 Methodology: [docs/benchmarking.md](docs/benchmarking.md) ·
 Profiling: [docs/architecture.md](docs/architecture.md#performance)
@@ -154,7 +176,7 @@ Profiling: [docs/architecture.md](docs/architecture.md#performance)
 
 ```mermaid
 flowchart LR
-    GZ["Gazebo Harmonic<br/>warehouse + AMR"] -->|ros_gz_bridge| L["/lidar/points"]
+    GZ["Gazebo Harmonic<br/>warehouse + Summit Steel"] -->|ros_gz_bridge| L["/lidar/points"]
     GZ --> C["/camera/image_raw"]
     GZ --> I["/imu/data"]
     GZ --> O["/odom + TF"]
@@ -170,15 +192,27 @@ flowchart LR
 
 ### Robot and sensors
 
-Differential-drive AMR · 0.60 × 0.38 m chassis · 0.08 m wheels on a 0.44 m track ·
-31.3 kg · inertia computed from primitive shapes.
+| Property | Value |
+|---|---|
+| Platform | Robotnik RB-Summit-XL Steel ([meshes](#third-party-assets)) |
+| Chassis | 0.719 × 0.579 × 0.443 m, 66 mm ground clearance |
+| Height with LiDAR | 0.695 m |
+| Mass | 125.9 kg: 99 kg chassis, 4 × 6.5 kg wheels, 0.9 kg sensors |
+| Wheels | 4 mecanum, 0.127 m radius, 0.099 m wide, 0.445 m wheelbase, 0.409 m track |
+| Drive | Gazebo MecanumDrive, friction along the roller axis (`fdir1` at 45°, `mu2` = 0) |
+| Limits | 1.5 m/s and 1.5 rad/s, 1 m/s² and 1 rad/s² |
+| Collision | Primitives: box chassis, sphere wheels, cylinder mast and LiDAR |
+| Inertia | Computed from the primitive shapes |
+
+The robot fits 3 m aisles and the 0.9 m passage in aisle A3, with 0.16 m clear on
+each side of the chassis and 0.12 m on each side of the wheel collision spheres.
 
 | Sensor | Interface | Frame | Configuration |
 |---|---|---|---|
-| 3D LiDAR (`gpu_lidar`) | `/lidar/points` `PointCloud2` | `lidar_link`, 0.50 m above ground | 16 channels ±15°, 900 samples/rev (0.4°), 10 Hz, 0.3–30 m, σ = 1 cm |
-| RGB camera | `/camera/image_raw`, `/camera/camera_info` | `camera_optical_frame` | 640 × 480 `rgb8`, 20 Hz, 1.2 rad HFOV |
-| IMU | `/imu/data` | `imu_link` | 100 Hz, MEMS-grade Gaussian noise and bias |
-| Wheel odometry | `/odom`, TF `odom → base_footprint` | `base_footprint` | Gazebo DiffDrive, 50 Hz |
+| 3D LiDAR (`gpu_lidar`) | `/lidar/points` `PointCloud2` | `lidar_link`, 0.66 m above ground, body centre | 16 channels ±15°, 900 samples/rev (0.4°), 10 Hz, 0.3–30 m, σ = 1 cm |
+| RGB camera | `/camera/image_raw`, `/camera/camera_info` | `camera_optical_frame`, 0.417 m above ground, front face | 640 × 480 `rgb8`, 20 Hz, 1.2 rad HFOV |
+| IMU | `/imu/data` | `imu_link`, 0.288 m above ground, body centre | 100 Hz, MEMS-grade Gaussian noise and bias |
+| Wheel odometry | `/odom`, TF `odom → base_footprint` | `base_footprint` | Gazebo MecanumDrive, integrated from wheel joint positions, 50 Hz |
 
 ### Perception pipeline
 
@@ -276,8 +310,8 @@ colcon test && colcon test-result --verbose
 |---|---|
 | `wsl_perception` | GoogleTest: parser incl. hostile layouts, each stage, boundaries, config validation; randomized property tests; launch test of the real node |
 | `wsl_benchmark` | pytest: metrics against analytic results, evaluation end to end, scenarios, pure pursuit |
-| `wsl_description` | URDF structure, inertia physics, frame conventions, `check_urdf` |
-| `wsl_sim` | Asset resolution, bridge directions, ground-truth isolation, bridge ↔ robot topic consistency |
+| `wsl_description` | URDF structure, inertia physics, mesh checks (collisions match, roller direction, no z-fighting), LiDAR clearance, drive limits, frame conventions, `check_urdf` |
+| `wsl_sim` | Asset and robot mesh resolution, bridge directions, ground-truth isolation, bridge ↔ robot topic consistency |
 
 End-to-end smoke test (launches the full system headless and checks sensors, frames,
 rates, TF authorities and driving):
@@ -304,6 +338,19 @@ on amd64 and arm64.
 | SLAM | RTAB-Map (`rtabmap_slam`), PCL ICP backend |
 | Languages | C++17 (perception), Python 3 (launch, benchmark) |
 | Architectures | amd64 and arm64 |
+
+## Third-party assets
+
+The robot's visual meshes are not ours. They are Robotnik's, and the rest of the
+project is Apache-2.0.
+
+| | |
+|---|---|
+| Source | [RobotnikAutomation/robotnik_description](https://github.com/RobotnikAutomation/robotnik_description), branch `jazzy-devel`, commit `47966067b2105a84da1a07f06b3cc7c44706fe34` |
+| Copyright | © 2025 Robotnik Automation S.L. |
+| Licence | BSD-3-Clause, kept with the files: [`meshes/rbsummit_steel/LICENSE`](src/wsl_description/meshes/rbsummit_steel/LICENSE) |
+| Files | `rbsummit_steel_chassis.stl`, `rbsummit_steel_top_cover.stl`, `kairos_mecanum_wheel_1.dae`, `kairos_mecanum_wheel_2.dae` |
+| Modified | The files are byte-identical to upstream. In our URDF the top cover sits 1.5 mm higher than upstream to avoid z-fighting, colours are set from Robotnik's datasheet photo, and collision uses primitives instead of the chassis mesh. Robotnik's logo meshes and sensors are not used. |
 
 ## Documentation
 
