@@ -45,7 +45,7 @@ class Scenario:
         if scenario.waypoints and len(scenario.waypoints) < 2:
             raise ValueError(f'{path}: a route needs at least two waypoints')
         if not 0.0 < scenario.speed_mps <= 1.5:
-            raise ValueError(f'{path}: speed_mps must be in (0, 1.5] (DiffDrive limit)')
+            raise ValueError(f'{path}: speed_mps must be in (0, 1.5] (MecanumDrive limit)')
         return scenario
 
 

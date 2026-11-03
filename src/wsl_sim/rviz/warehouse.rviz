@@ -72,17 +72,27 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        left_wheel_link:
+        back_left_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        back_right_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_left_wheel_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        front_right_wheel_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
         lidar_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_wheel_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false

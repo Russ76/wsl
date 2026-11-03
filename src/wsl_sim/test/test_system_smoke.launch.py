@@ -115,8 +115,10 @@ class TestSystemSmoke(unittest.TestCase):
         ranges = np.linalg.norm(finite, axis=1)
         self.assertGreaterEqual(ranges.min(), 0.29)
         self.assertLessEqual(ranges.max(), 30.01)
-        # Lowest ring (-15 deg) hits the floor 0.5 m below the sensor at ~1.9 m.
-        self.assertAlmostEqual(np.percentile(finite[:, 2], 1), -0.5, delta=0.05)
+        # Lowest ring (-15 deg) hits the floor 0.66 m below the sensor at ~2.5 m.
+        self.assertAlmostEqual(np.percentile(finite[:, 2], 1), -0.66, delta=0.05)
+        # The spawn point is open space, nothing is within 2 m: a closer return is a self-hit.
+        self.assertGreater(ranges.min(), 2.0, 'LiDAR sees the robot')
 
         image = self.messages['/camera/image_raw'][-1]
         self.assertEqual(image.header.frame_id, 'camera_optical_frame')
@@ -143,8 +145,8 @@ class TestSystemSmoke(unittest.TestCase):
             lambda: self.tf_buffer.can_transform('odom', 'camera_optical_frame', Time()),
             60.0, 'odom -> camera_optical_frame')
         lidar = self.tf_buffer.lookup_transform('base_footprint', 'lidar_link', Time())
-        self.assertAlmostEqual(lidar.transform.translation.x, 0.15, places=3)
-        self.assertAlmostEqual(lidar.transform.translation.z, 0.50, places=3)
+        self.assertAlmostEqual(lidar.transform.translation.x, 0.0, places=3)
+        self.assertAlmostEqual(lidar.transform.translation.z, 0.66, places=3)
         # Without SLAM nothing may publish map -> odom; odometry is the only dynamic root edge.
         self.assertIn(('odom', 'base_footprint'), self.tf_publishers)
         self.assertFalse(any(parent == 'map' for parent, _ in self.tf_publishers))
