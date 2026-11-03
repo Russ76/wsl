@@ -23,25 +23,28 @@ namespace
 {
 
 // Robot in a 3 m aisle between two rack rows; scene coordinates are in the
-// sensor frame with the sensor 0.5 m above the floor.
+// sensor frame with the sensor 0.66 m above the floor.
 Scene warehouseAisle()
 {
+  const float floor_z = -0.66f;
   Scene scene;
-  scene.ground_z = -0.5f;
+  scene.ground_z = floor_z;
   for (float x = -13.5f; x < 13.5f; x += 2.7f) {
     for (float side : {1.0f, -1.0f}) {
       const float y_near = side * 1.5f;
       const float y_far = side * 2.6f;
-      const Eigen::Vector3f lo(x, std::min(y_near, y_far), -0.5f);
-      const Eigen::Vector3f hi(x + 0.08f, std::max(y_near, y_far), 1.9f);
+      const Eigen::Vector3f lo(x, std::min(y_near, y_far), floor_z);
+      const Eigen::Vector3f hi(x + 0.08f, std::max(y_near, y_far), floor_z + 2.4f);
       scene.boxes.push_back({lo, hi});  // upright
       scene.boxes.push_back(
-        {Eigen::Vector3f(x + 0.2f, lo.y(), -0.37f), Eigen::Vector3f(x + 1.3f, hi.y(), 0.38f)});
+        {Eigen::Vector3f(x + 0.2f, lo.y(), floor_z + 0.13f),
+         Eigen::Vector3f(x + 1.3f, hi.y(), floor_z + 0.88f)});
     }
   }
-  scene.boxes.push_back({{4.0f, -0.6f, -0.5f}, {5.2f, 0.4f, 0.75f}});       // pallet in the aisle
-  scene.boxes.push_back({{-20.0f, -20.0f, -0.5f}, {-19.7f, 20.0f, 4.5f}});  // end walls
-  scene.boxes.push_back({{19.7f, -20.0f, -0.5f}, {20.0f, 20.0f, 4.5f}});
+  scene.boxes.push_back(
+    {{4.0f, -0.6f, floor_z}, {5.2f, 0.4f, floor_z + 1.25f}});  // pallet in the aisle
+  scene.boxes.push_back({{-20.0f, -20.0f, floor_z}, {-19.7f, 20.0f, floor_z + 5.0f}});  // end walls
+  scene.boxes.push_back({{19.7f, -20.0f, floor_z}, {20.0f, 20.0f, floor_z + 5.0f}});
   return scene;
 }
 

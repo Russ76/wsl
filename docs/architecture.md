@@ -20,7 +20,7 @@ adding capability.
 ```mermaid
 flowchart LR
     subgraph Gazebo Harmonic
-        DD[DiffDrive]
+        DD[MecanumDrive]
         L[gpu_lidar 16x900 @10 Hz]
         C[camera 640x480 @20 Hz]
         I[IMU @100 Hz]
@@ -60,9 +60,9 @@ Dotted edges exist only in benchmark runs (`ground_truth:=true`).
 
 | Topic | Type | Producer | Consumers |
 |---|---|---|---|
-| `/cmd_vel` | `geometry_msgs/Twist` | teleop / `route_follower` | DiffDrive (via bridge) |
-| `/odom` | `nav_msgs/Odometry` | DiffDrive | recorder |
-| `/tf` | `tf2_msgs/TFMessage` | DiffDrive (`odom→base_footprint`), robot_state_publisher (wheels), rtabmap (`map→odom`) | all |
+| `/cmd_vel` | `geometry_msgs/Twist` | teleop / `route_follower` | MecanumDrive (via bridge) |
+| `/odom` | `nav_msgs/Odometry` | MecanumDrive | recorder |
+| `/tf` | `tf2_msgs/TFMessage` | MecanumDrive (`odom→base_footprint`), robot_state_publisher (wheels), rtabmap (`map→odom`) | all |
 | `/tf_static` | `tf2_msgs/TFMessage` | robot_state_publisher | all |
 | `/joint_states` | `sensor_msgs/JointState` | Gazebo JointStatePublisher | robot_state_publisher |
 | `/lidar/points` | `sensor_msgs/PointCloud2` (`lidar_link`, x y z intensity ring, organised 16×900) | gpu_lidar | perception, rtabmap, RViz, recorder |
@@ -92,24 +92,71 @@ Inertia is computed from the primitive shapes by Xacro macros rather than typed
 in, and a test checks every tensor is positive definite and satisfies the
 triangle inequality.
 
-**Primitives instead of the reference meshes.** The MOGI reference meshes are a
-0.40 × 0.20 m teaching robot; the WSL AMR is 0.60 × 0.38 m with a sensor mast.
-Rescaling the meshes would distort the wheels, and primitives render cheaply in
-every camera and GPU-LiDAR frame. No third-party assets are redistributed.
+**Robotnik meshes for visuals, primitives for collisions.** The robot is the
+RB-Summit-XL Steel. Its chassis, cover and wheel meshes are visual only; the
+collision model is one box around the chassis mesh, spheres for the wheels and
+cylinders for the mast and LiDAR. The meshes stay in the units and origins they
+ship with and are redistributed under their BSD-3-Clause licence
+([third-party assets](../README.md#third-party-assets)). Chassis and cover take
+their colours from URDF materials. The wheel meshes carry two COLLADA materials,
+rim and rollers, so their visuals have no URDF material: RViz always uses the
+materials inside a COLLADA file and Gazebo would flatten both parts to a single
+URDF colour, so this is the way both renderers show the same colours.
+
+**Mecanum drive, not skid-steer.** Measured on the warehouse floor with the same
+drive sequence:
+
+| Model | Commanded → measured turn rate | Odometry heading error per turn | Verdict |
+|---|---|---|---|
+| A: MecanumDrive, sphere wheels, μ = 1 | 1.00 → 1.000 rad/s | 0.00° | chosen |
+| A: MecanumDrive, cylinder wheels | 1.00 → 1.131 rad/s | 43.6° | contact is off the axle |
+| B: skid-steer on DiffDrive, μ = 1 | 1.00 → 0.000 rad/s | 362° | does not turn |
+| B: skid-steer on DiffDrive, μ = 0.3 | 1.00 → 0.000 rad/s | 362° | does not turn |
+
+The wheelbase (0.445 m) is longer than the track (0.409 m), so with isotropic
+friction the lateral friction moment exceeds what the wheels can apply, at any μ.
+The real robot has mecanum wheels, so A is also the faithful choice. `/cmd_vel`
+keeps its meaning, with `linear.y` now also available, and `/odom` is integrated
+from wheel joint positions as before.
+
+Two properties of the Harmonic plugin matter. It reads only the combined
+`min/max_velocity` and `min/max_acceleration`; the per-axis names of later
+versions are ignored without a message, which leaves the robot limited only by
+friction (6.9 m/s² was measured). With one value for all axes, the limit is
+1 m/s² and 1 rad/s². A test pins these names. Yaw depends on the sum of
+separation and wheelbase, so `odom_wheel_separation_scale` scales both, and a
+3% scale still means a 3% turn-rate error. The resulting heading error on the
+closed loop is 13.97° against 360° × (1 − 0.99 / 1.03) = 13.98° predicted.
+
+**Contact parameters.** Only `mu`, `mu2` and `fdir1` are set on the wheels. The
+gz-physics DART backend reads `mu`, `mu2`, `fdir1`, `slip1`, `slip2` and `bounce`
+and never reads `kp`, `kd`, `min_depth` or `max_vel`. Setting `kp` to 1e3 and to
+1e9 gave identical results to the unset case, so they are left out. μ = 0.5 also
+gave identical results: 1 m/s² needs only μ ≥ 0.15 on the rollers. The robot
+spawns at z = 0, tangent to the floor; from 2 cm it lands at 0.40 m/s and
+penetrates 0.7 mm.
+
+**Inertia from primitives, not upstream's numbers.** Upstream puts 125 kg on
+`base_link` plus 26 kg of wheels, 151 kg in total, with its centre of mass at
+axle height and Ixx/Iyy/Izz = 1.391/6.853/6.125 kg·m². Its Ixx is too low for this
+shape: a uniform solid of the mesh gives 3.5/5.5/5.9 kg·m² at 99 kg, and the box
+used here gives 4.38/5.88/7.03. The model uses 125 kg in total before sensors
+(99 kg chassis, 4 × 6.5 kg wheels) with the centre of mass at the box centre, 0.29 m
+above the floor. The uniform mesh centroid would be 0.33 m. Tipping needs
+7.0 m/s² laterally and 7.6 m/s² longitudinally, against a 1 m/s² limit. Robotnik's
+datasheet states 105 kg, which is not what upstream's URDF models.
 
 **Detailed visuals, envelope collisions.** Each warehouse asset has one
 collision box around its outer envelope, while its visuals keep every upright,
 deck and load for the LiDAR and camera, which render visuals and never touch
 collision geometry. With per-part collision boxes (~800 static shapes) the
-500 Hz DART step was the simulation bottleneck. A controlled experiment
-(below) measured RTF 0.51 with per-part collisions and 0.99 with envelopes at
-the same 2 ms step, with no change in what any sensor observes. A test keeps
-it that way.
+500 Hz DART step was the simulation bottleneck, so they were removed, with no
+change in what any sensor observes. A test keeps it that way.
 
-**Genuine wheel odometry with a calibration-error model.** DiffDrive integrates
+**Genuine wheel odometry with a calibration-error model.** MecanumDrive integrates
 wheel joint positions, so `/odom` drifts with slip. Simulated wheels barely
 slip, so the scenarios set `odom_wheel_separation_scale` / `odom_wheel_radius_scale`:
-DiffDrive then believes a wrong geometry for both control and odometry, which
+MecanumDrive then believes a wrong geometry for both control and odometry, which
 reproduces the systematic errors of an uncalibrated real robot.
 
 **SLAM reads odometry from TF, not the topic.** RTAB-Map looks up
@@ -149,8 +196,8 @@ authorities.
 
 - `perception_node`: single-threaded executor. The TF listener has its own
   thread, so the bounded TF wait (`tf_timeout_s`) cannot starve TF updates.
-  Processing (5.6 ms mean on a synthetic 14.4 k-point scan in isolation,
-  16.4 ms mean / 43 ms max in the full stack on 4 shared cores) stays far below
+  Processing (7.1 ms mean on a synthetic 14.4 k-point scan in isolation,
+  11.2 ms mean / 22.3 ms max in the full stack on 8 shared CPUs) stays far below
   the 100 ms LiDAR period. A depth-1 subscription drops stale clouds instead of
   queueing them if this ever changes.
 - rtabmap processes at its 1 Hz detection rate with `topic_queue_size: 1`.
@@ -158,28 +205,23 @@ authorities.
 
 ## Performance
 
-Profiled before optimizing, on a 4-core x86_64 VM with Mesa llvmpipe
-software rendering. Steady-state RTF from Gazebo's `/stats`, 20 samples after
-20 s of warm-up:
+Measured in an 8-CPU arm64 container on an Apple M1 Pro with Mesa llvmpipe
+software rendering. RTF is Δ sim time / Δ real time from Gazebo's `/stats` over
+40 s after 25 s of warm-up:
 
-| Configuration (Gazebo only) | RTF |
+| Configuration | RTF |
 |---|---|
-| Empty world + robot with all sensors | 0.965 |
-| Warehouse, per-part collisions, no robot | 0.805 |
-| Warehouse, per-part collisions + robot without sensors | 0.705 |
-| Warehouse, per-part collisions + robot | 0.508 |
-| … same, 4 ms physics step instead of 2 ms | 0.946 |
-| **Warehouse, envelope collisions + robot (current)** | **0.988** |
+| Warehouse + robot, Gazebo and bridge only | 0.933–0.940 |
+| … with perception | 0.941–0.942 |
+| … with perception and SLAM, driving a route | 0.923–0.931 |
 
-Reducing sensor load barely helped (full ROS stack without SLAM: default 0.503,
-camera at 5 Hz 0.499, LiDAR 8 × 450 0.497, both 0.536). Halving the
-physics step rate nearly doubled RTF. The cost was the physics step over
-hundreds of static collision shapes. Envelope collisions removed it without
-the dynamics and timing cost of a coarser step: 4 ms is not a divisor of the
-IMU's 10 ms period, so IMU samples would jitter.
+Removing the real-time cap does not raise these numbers, so Gazebo is limited by
+compute here, not by the cap. Gazebo takes 268% of one core. The robot has seven
+collision primitives and 57 400 visual triangles, which every camera and GPU LiDAR
+frame draws. How the rendering and physics shares divide was not measured.
 
-Perception is far from being a bottleneck: 5.6 ms mean on a synthetic 16 × 900
-aisle scan, 83% of it in Euclidean clustering (KD-tree radius search).
+Perception is far from being a bottleneck: 7.1 ms mean on a synthetic 16 × 900
+aisle scan, 84% of it in Euclidean clustering (KD-tree radius search).
 It is not optimized further while it uses < 10% of the sensor period.
 
 ## Failure handling
@@ -217,7 +259,7 @@ It is not optimized further while it uses < 10% of the sensor period.
 | Unit (C++) | PointCloud2 parsing incl. hostile layouts, every pipeline stage, boundaries, config validation | `wsl_perception/test/*.cpp` |
 | Property / fuzz | 300 random configs × clouds with NaN/Inf/extremes per invariant test; 2000 random byte layouts; libFuzzer target | `test_pipeline_properties.cpp`, `fuzz/` |
 | Unit (Python) | Benchmark maths against analytic results, scenario validation, pure-pursuit closed loop | `wsl_benchmark/test/` |
-| Model | URDF structure, inertia physics, frame conventions, check_urdf | `wsl_description/test/` |
+| Model | URDF structure, inertia physics, mesh and collision consistency, roller direction, LiDAR clearance, drive limits, frame conventions, check_urdf | `wsl_description/test/` |
 | Asset consistency | Model URIs, bridge directions, GT isolation, bridge↔robot topic match | `wsl_sim/test/test_sim_assets.py` |
 | Node | Real `perception_node` with real TF: detection, atomic reconfiguration, startup rejection | `test_perception_node.launch.py` |
 | System | Headless full launch: sensors, frames, rates, TF authorities, driving (opt-in) | `test_system_smoke.launch.py` |

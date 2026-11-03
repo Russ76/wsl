@@ -9,6 +9,10 @@ import pytest
 import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
+from launch import LaunchContext
+from launch.actions import AppendEnvironmentVariable
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.utilities import perform_substitutions
 
 SIM_DIR = os.environ.get('WSL_SIM_DIR', os.path.join(os.path.dirname(__file__), '..'))
 WORLD = os.path.join(SIM_DIR, 'worlds', 'warehouse.sdf')
@@ -86,6 +90,26 @@ def test_bridged_gazebo_topics_exist_on_the_robot():
     for entry in load_bridge('bridge.yaml') + load_bridge('bridge_ground_truth.yaml'):
         if entry['gz_topic_name'] != '/clock':
             assert entry['gz_topic_name'] in robot_topics, entry['gz_topic_name']
+
+
+def test_robot_meshes_resolve_in_gazebo_and_rviz():
+    """package:// is converted to model://<package>/ for Gazebo; RViz uses the ament index."""
+    share = get_package_share_directory('wsl_description')
+    urdf = os.path.join(share, 'urdf', 'wsl_amr.urdf.xacro')
+    meshes = {mesh.get('filename')
+              for mesh in ET.fromstring(xacro.process_file(urdf).toxml()).iter('mesh')}
+    assert meshes
+    for uri in meshes:
+        assert uri.startswith('package://wsl_description/'), uri
+        assert os.path.isfile(os.path.join(share, uri[len('package://wsl_description/'):])), uri
+
+    launch_file = os.path.join(SIM_DIR, 'launch', 'warehouse.launch.py')
+    description = PythonLaunchDescriptionSource(launch_file).get_launch_description(LaunchContext())
+    paths = [perform_substitutions(LaunchContext(), entity.value)
+             for entity in description.entities
+             if isinstance(entity, AppendEnvironmentVariable)
+             and perform_substitutions(LaunchContext(), entity.name) == 'GZ_SIM_RESOURCE_PATH']
+    assert os.path.dirname(share) in paths
 
 
 @pytest.mark.parametrize('model', ['wsl_rack', 'wsl_pallet_stack', 'wsl_pillar'])

@@ -1,6 +1,6 @@
 # RTAB-Map graph SLAM with 3D LiDAR and wheel odometry.
 #
-# Odometry is read from TF (odom -> base_footprint, published by DiffDrive)
+# Odometry is read from TF (odom -> base_footprint, published by MecanumDrive)
 # at each scan's stamp, which avoids approximate topic synchronisation. Each
 # new graph node is linked to the previous one by point-to-plane ICP between
 # scans (neighbour link refinement), so wheel slip and calibration error are

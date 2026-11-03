@@ -24,7 +24,7 @@
   gz_type_name: gz.msgs.Odometry
   direction: GZ_TO_ROS
 
-# odom -> base_footprint from DiffDrive. The only odometry TF authority.
+# odom -> base_footprint from MecanumDrive. The only odometry TF authority.
 - ros_topic_name: /tf
   gz_topic_name: /wsl/tf
   ros_type_name: tf2_msgs/msg/TFMessage

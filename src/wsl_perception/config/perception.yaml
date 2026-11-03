@@ -7,7 +7,8 @@ perception:
     expected_rate_hz: 10.0
     tf_timeout_s: 0.1
 
-    # Measured from the LiDAR origin. 0.5 m clears the mast and chassis.
+    # Measured from the LiDAR origin. Every ray passes over the robot; 0.5 m only
+    # removes the mast and the sensor itself, which sit inside this radius.
     min_range_m: 0.5
     max_range_m: 25.0
 

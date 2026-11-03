@@ -8,15 +8,13 @@
 [![Gazebo Harmonic](https://img.shields.io/badge/Gazebo-Harmonic-F58113)](#supported-platforms)
 [![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04_LTS-E95420?logo=ubuntu&logoColor=white)](#ubuntu-2404)
 [![macOS](https://img.shields.io/badge/macOS-Intel_%7C_Apple_Silicon-000000?logo=apple&logoColor=white)](#macos)
-[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)](#perception-pipeline)
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)](#supported-platforms)
 [![Python 3](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)](#benchmark)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
 ![Version](https://img.shields.io/badge/version-0.1.0-brightgreen)
 
 [Quick start](#quick-start) ·
 [Demo](#demo) ·
-[Performance](#performance) ·
-[How it works](#how-it-works) ·
 [Testing](#testing) ·
 [Docs](#documentation)
 
@@ -32,14 +30,9 @@
 
 ## Overview
 
-WSL is a ROS 2 Jazzy and Gazebo Harmonic platform for developing and measuring
-perception and mapping on a warehouse mobile robot. It answers engineering
-questions with numbers: how far wheel odometry drifts, how much loop closure
-recovers, what LiDAR resolution costs, and where the CPU goes.
-
 | Component | Description |
 |---|---|
-| **Robot** | Differential-drive AMR with 3D LiDAR, RGB camera and IMU |
+| **Robot** | Robotnik RB-Summit-XL Steel with mecanum wheels, 3D LiDAR, RGB camera and IMU |
 | **World** | 40 × 30 m warehouse with repetitive racks, pillars and dead ends |
 | **Perception** | C++ / PCL point-cloud pipeline: filtering, ground removal, obstacle clusters |
 | **SLAM** | RTAB-Map 3D LiDAR graph SLAM with ICP and loop closure |
@@ -50,12 +43,12 @@ recovers, what LiDAR resolution costs, and where the CPU goes.
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/media/gazebo-follow.gif" alt="Gazebo follow camera" width="100%"/><br/>
-      <b>Gazebo</b><br/><sub>The AMR driving between racks and pillars</sub>
+      <img src="docs/media/gazebo-follow.gif" alt="Gazebo follow camera on the Summit Steel between racks" width="100%"/><br/>
+      <b>Gazebo</b><br/><sub>The Summit Steel driving between racks</sub>
     </td>
     <td width="50%" align="center">
-      <img src="docs/media/rviz-slam.gif" alt="RViz showing SLAM map and LiDAR rings" width="100%"/><br/>
-      <b>RViz + RTAB-Map</b><br/><sub>LiDAR scans, 3D map cloud and occupancy grid</sub>
+      <img src="docs/media/rviz-slam.gif" alt="RViz with robot model, LiDAR rings, SLAM map and clusters" width="100%"/><br/>
+      <b>RViz + RTAB-Map</b><br/><sub>Robot model, LiDAR, SLAM map and obstacle clusters</sub>
     </td>
   </tr>
   <tr>
@@ -64,8 +57,24 @@ recovers, what LiDAR resolution costs, and where the CPU goes.
       <b>Onboard camera</b><br/><sub><code>/camera/image_raw</code> at 640 × 480, 20 Hz</sub>
     </td>
     <td width="50%" align="center">
-      <img src="docs/media/desktop.gif" alt="Full Gazebo and RViz desktop" width="100%"/><br/>
-      <b>Full desktop</b><br/><sub>Gazebo entity tree and RViz displays after launch</sub>
+      <img src="docs/media/rviz-model.gif" alt="RViz close-up of the robot model with TF axes and turning wheels" width="100%"/><br/>
+      <b>Robot model</b><br/><sub>TF axes, wheels turning from <code>/joint_states</code></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/media/robot-closeup.png" alt="Summit Steel close-up in Gazebo" width="100%"/><br/>
+      <b>Close-up</b><br/><sub>Robotnik meshes in Gazebo</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/media/robot-aisle.png" alt="Summit Steel in a warehouse aisle" width="100%"/><br/>
+      <b>In an aisle</b><br/><sub>Between rack rows in aisle A2</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/media/warehouse-overview.png" alt="Top-down view of the warehouse" width="100%"/><br/>
+      <b>Warehouse</b><br/><sub>40 × 30 m, top down</sub>
     </td>
   </tr>
 </table>
@@ -127,94 +136,8 @@ Build, test, run, benchmark and debug are available as VS Code tasks
 (**Terminal → Run Task**) and debug configurations (**Run and Debug**).
 The same dev container works on Windows.
 
-## Performance
 
-<details>
-<summary><b>System metrics</b></summary>
 
-<br/>
-
-| System (`warehouse_loop`) | Measured |
-|---|---|
-| LiDAR / camera / IMU / odom rate (sim time) | 10.000 / 20.000 / 100.002 / 50.000 Hz, 0 stalls, 0 timestamp regressions |
-| Perception processing inside the node | 16.4 ms mean, 43 ms max (period 100 ms), 0 rejected clouds |
-| Perception end-to-end latency | 17.0 ms mean, 30.1 ms p95 |
-| Perception point reduction (14 400 raw → ~6 175 filtered) | 57.1 % |
-| Perception algorithm cost in isolation (`pipeline_benchmark`) | 5.6 ms mean, 7.3 ms p95 |
-| Proximity loop closures | 5, first one when the loop closes (t = 192.4 s) |
-| Real-time factor, full stack | 0.63 |
-| CPU (% of one core): Gazebo / SLAM / perception / bridge / recorder | 169 / 35 / 13 / 9 / 39 |
-
-Methodology: [docs/benchmarking.md](docs/benchmarking.md) ·
-Profiling: [docs/architecture.md](docs/architecture.md#performance)
-
-</details>
-
-## How it works
-
-```mermaid
-flowchart LR
-    GZ["Gazebo Harmonic<br/>warehouse + AMR"] -->|ros_gz_bridge| L["/lidar/points"]
-    GZ --> C["/camera/image_raw"]
-    GZ --> I["/imu/data"]
-    GZ --> O["/odom + TF"]
-    L --> P["wsl_perception<br/>filter · ground · clusters"]
-    L --> S["RTAB-Map<br/>ICP graph SLAM"]
-    O --> S
-    P --> R["RViz"]
-    S --> R
-    S --> B["wsl_benchmark"]
-    P --> B
-    GZ -. "ground truth, benchmark only" .-> B
-```
-
-### Robot and sensors
-
-Differential-drive AMR · 0.60 × 0.38 m chassis · 0.08 m wheels on a 0.44 m track ·
-31.3 kg · inertia computed from primitive shapes.
-
-| Sensor | Interface | Frame | Configuration |
-|---|---|---|---|
-| 3D LiDAR (`gpu_lidar`) | `/lidar/points` `PointCloud2` | `lidar_link`, 0.50 m above ground | 16 channels ±15°, 900 samples/rev (0.4°), 10 Hz, 0.3–30 m, σ = 1 cm |
-| RGB camera | `/camera/image_raw`, `/camera/camera_info` | `camera_optical_frame` | 640 × 480 `rgb8`, 20 Hz, 1.2 rad HFOV |
-| IMU | `/imu/data` | `imu_link` | 100 Hz, MEMS-grade Gaussian noise and bias |
-| Wheel odometry | `/odom`, TF `odom → base_footprint` | `base_footprint` | Gazebo DiffDrive, 50 Hz |
-
-### Perception pipeline
-
-`wsl_perception` (C++, PCL) turns `/lidar/points` into obstacles:
-
-```
-raw cloud → validate → transform + ROI → voxel grid → ground removal → clusters
-```
-
-1. **Validate and extract**: reject empty clouds, missing frame, non-float or missing
-   xyz, big-endian and inconsistent step/size layouts before reading a byte; drop
-   NaN/Inf; range-filter from the sensor origin, all in one pass.
-2. **Transform + ROI** into `base_footprint` via TF.
-3. **Voxel grid** (0.08 m).
-4. **Ground removal**: RANSAC plane constrained to ≤ 0.15 rad tilt, fitted only to
-   points below 0.3 m so shelf decks cannot win.
-5. **Euclidean clustering** (0.25 m) → axis-aligned boxes.
-
-**Outputs:** `/perception/filtered_points` · `/perception/obstacle_points` ·
-`/perception/clusters` (`vision_msgs/Detection3DArray`) · `/perception/markers` ·
-`/diagnostics` (input rate, processing time, rejections).
-
-Every parameter has a unit in its name and a valid range, and the full set is
-re-validated when changed at runtime.
-
-### SLAM pipeline
-
-RTAB-Map graph SLAM ([`wsl_slam/config/rtabmap.yaml`](src/wsl_slam/config/rtabmap.yaml)):
-
-- Wheel odometry read from TF at each scan's stamp
-- Point-to-plane ICP between consecutive graph nodes
-- Loop closure by scan proximity
-- 3-DoF optimization
-- 2D occupancy grid projected from the 3D scans
-
-Publishes `map → odom`, `/rtabmap/map`, `/rtabmap/mapPath` and `/rtabmap/cloud_map`.
 
 ## Launch options
 
@@ -222,20 +145,6 @@ Publishes `map → odom`, `/rtabmap/map`, `/rtabmap/mapPath` and `/rtabmap/cloud
 ros2 launch wsl_sim warehouse.launch.py headless:=true rviz:=false
 ```
 
-| Argument | Default | Meaning |
-|---|---|---|
-| `headless` | `false` | Gazebo server only; sensors still render offscreen |
-| `rviz` | `true` | Start RViz (fixed frame `map` with SLAM, `odom` without) |
-| `perception` | `true` | Start the point-cloud pipeline |
-| `slam` | `true` | Start RTAB-Map |
-| `ground_truth` | `false` | Publish `/ground_truth/odom` (evaluation only) |
-| `world` | `warehouse` | World file in `wsl_sim/worlds` |
-| `x`, `y`, `yaw` | `-12.0`, `9.0`, `0.0` | Spawn pose in the world frame |
-| `lidar_channels`, `lidar_horizontal_samples`, `lidar_rate_hz` | `16`, `900`, `10` | LiDAR fidelity |
-| `camera_rate_hz` | `20` | Camera frame rate |
-| `odom_wheel_radius_scale`, `odom_wheel_separation_scale` | `1.0` | Odometry calibration error |
-
-On machines without a GPU, Gazebo renders with Mesa; `headless:=true` uses `libegl-mesa0`.
 
 ## Benchmark
 
@@ -276,8 +185,8 @@ colcon test && colcon test-result --verbose
 |---|---|
 | `wsl_perception` | GoogleTest: parser incl. hostile layouts, each stage, boundaries, config validation; randomized property tests; launch test of the real node |
 | `wsl_benchmark` | pytest: metrics against analytic results, evaluation end to end, scenarios, pure pursuit |
-| `wsl_description` | URDF structure, inertia physics, frame conventions, `check_urdf` |
-| `wsl_sim` | Asset resolution, bridge directions, ground-truth isolation, bridge ↔ robot topic consistency |
+| `wsl_description` | URDF structure, inertia physics, mesh checks (collisions match, roller direction, no z-fighting), LiDAR clearance, drive limits, frame conventions, `check_urdf` |
+| `wsl_sim` | Asset and robot mesh resolution, bridge directions, ground-truth isolation, bridge ↔ robot topic consistency |
 
 End-to-end smoke test (launches the full system headless and checks sensors, frames,
 rates, TF authorities and driving):
@@ -305,12 +214,18 @@ on amd64 and arm64.
 | Languages | C++17 (perception), Python 3 (launch, benchmark) |
 | Architectures | amd64 and arm64 |
 
+## Third party assets
+
+| | |
+|---|---|
+| Copyright | © 2025 Robotnik Automation S.L. |
+| Licence | BSD-3-Clause, kept with the files: [`meshes/rbsummit_steel/LICENSE`](src/wsl_description/meshes/rbsummit_steel/LICENSE) |
+
 ## Documentation
 
 | Document | Contents |
 |---|---|
 | [Architecture](docs/architecture.md) | Nodes, data flow, performance profiling |
-| [Frames](docs/frames.md) | TF tree and frame conventions |
 | [Benchmarking](docs/benchmarking.md) | Metrics and methodology |
 
 ---

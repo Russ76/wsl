@@ -20,7 +20,7 @@ using test::makeCloud;
 using test::Scene;
 using test::simulateScan;
 
-// LiDAR mounted 0.5 m above the target frame origin, as on the WSL AMR.
+// LiDAR mounted 0.5 m above the target frame origin.
 const Eigen::Isometry3f kSensorToBase = [] {
   Eigen::Isometry3f t = Eigen::Isometry3f::Identity();
   t.translation() = Eigen::Vector3f(0.0f, 0.0f, 0.5f);

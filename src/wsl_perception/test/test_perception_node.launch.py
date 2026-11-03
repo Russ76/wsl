@@ -32,19 +32,19 @@ def generate_test_description():
     perception = launch_ros.actions.Node(
         package='wsl_perception', executable='perception_node', name='perception',
         parameters=[CONFIG], output='screen')
-    # LiDAR 0.5 m above base_footprint, as on the robot.
+    # LiDAR 0.66 m above base_footprint, as on the robot.
     static_tf = launch_ros.actions.Node(
         package='tf2_ros', executable='static_transform_publisher',
-        arguments=['--z', '0.5', '--frame-id', 'base_footprint', '--child-frame-id', 'lidar_link'])
+        arguments=['--z', '0.66', '--frame-id', 'base_footprint', '--child-frame-id', 'lidar_link'])
     return launch.LaunchDescription([perception, static_tf, launch_testing.actions.ReadyToTest()])
 
 
 def synthetic_scene():
-    """Floor grid 0.5 m below the sensor plus a 0.6 x 1.0 x 1.0 m box 3 m ahead."""
+    """Floor grid 0.66 m below the sensor plus a 0.6 x 1.0 x 1.0 m box 3 m ahead."""
     xs, ys = np.meshgrid(np.arange(-6, 6, 0.1), np.arange(-6, 6, 0.1))
-    floor = np.stack([xs.ravel(), ys.ravel(), np.full(xs.size, -0.5)], axis=1)
+    floor = np.stack([xs.ravel(), ys.ravel(), np.full(xs.size, -0.66)], axis=1)
     by, bz = np.meshgrid(np.arange(-0.5, 0.5, 0.04), np.arange(0.0, 1.0, 0.04))
-    face = np.stack([np.full(by.size, 3.0), by.ravel(), bz.ravel() - 0.5], axis=1)
+    face = np.stack([np.full(by.size, 3.0), by.ravel(), bz.ravel() - 0.66], axis=1)
     return np.vstack([floor, face]).astype(np.float32)
 
 
